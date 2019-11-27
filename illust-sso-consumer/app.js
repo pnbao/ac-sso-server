@@ -26,9 +26,23 @@ app.use(checkSSORedirect());
 
 app.get("/", isAuthenticated, (req, res, next) => {
   res.render("index", {
-    what: `SSO-Consumer One ${JSON.stringify(req.session.user)}`,
-    title: "SSO-Consumer | Home"
+    what: `Illust SSO-Consumer ${JSON.stringify(req.session.user)}`,
+    title: "Illust SSO-Consumer | Illust Home"
   });
+});
+
+app.get("/logout", (req, res, next) => {
+  console.log("user", req.session.user);
+  const globalSessionToken = req.session.user.globalSessionID;
+  const redirectURL = `${req.protocol}://${req.headers.host}`;
+  res.clearCookie(globalSessionToken);
+  req.session.destroy();
+  res.redirect(
+    "http://account.acworks.co.jp:3010/acsso/logout?globalSessionToken=" +
+      globalSessionToken +
+      "&serviceURL=" +
+      redirectURL
+  );
 });
 
 app.use((req, res, next) => {

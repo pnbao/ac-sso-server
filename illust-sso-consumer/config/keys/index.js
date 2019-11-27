@@ -7,7 +7,7 @@ const publicKeyFilePath =
 
 const publicKey = fs.readFileSync(publicKeyFilePath);
 
-const jwtValidatityKey = "simple-sso-jwt-validatity";
+const jwtValidatityKey = "ac-sso-jwt-validatity";
 
 module.exports = Object.assign(
   {},

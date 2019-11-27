@@ -1,29 +1,21 @@
 {
-  "name": "ac-sso-server",
+  "name": "ac-sso-consumerone",
   "version": "1.0.0",
-  "description": "\"A Single Sign On Server\"",
+  "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js"
   },
-  "keywords": [
-    "sso",
-    "node.js",
-    "sso-nodejs"
-  ],
   "author": "PNBao",
   "license": "ISC",
   "dependencies": {
-    "body-parser": "^1.18.3",
+    "axios": "^0.18.1",
     "ejs": "^2.6.1",
     "ejs-mate": "^2.3.0",
     "express": "^4.16.3",
     "express-session": "^1.15.6",
-    "hashids": "^1.1.4",
     "jsonwebtoken": "^8.3.0",
-    "morgan": "^1.9.1",
-    "serverless-http": "^2.3.0",
-    "uuid": "^3.3.2"
+    "morgan": "^1.9.1"
   }
 }

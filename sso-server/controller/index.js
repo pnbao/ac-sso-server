@@ -41,36 +41,43 @@ const appTokenFromRequest = fromAuthHeaderAsBearerToken();
 
 // app token to validate the request is coming from the authenticated server only.
 const appTokenDB = {
-  sso_consumer: "l1Q7zkOL59cRqWBkQ12ZiGVW2DBL",
-  simple_sso_consumer: "1g0jJwGmRQhJwvwNOrY4i90kD0m"
+  photo_sso_consumer: "l1Q7zkOL59cRqWBkQ12ZiGVW2DBL",
+  illust_sso_consumer: "1g0jJwGmRQhJwvwNOrY4i90kD0m"
 };
 
 const alloweOrigin = {
-  "http://consumer.ankuranand.in:3020": true,
-  "http://consumertwo.ankuranand.in:3030": true,
-  "http://sso.ankuranand.in:3080": false
+  "http://local.photo-ac.com:3020": true,
+  "http://local.illust-ac.com:3030": true
 };
 
 const deHyphenatedUUID = () => uuidv4().replace(/-/gi, "");
 const encodedId = () => hashids.encodeHex(deHyphenatedUUID());
 
-// A temporary cahce to store all the application that has login using the current session.
+// A temporary cache to store all the application that has login using the current session.
 // It can be useful for variuos audit purpose
 const sessionUser = {};
 const sessionApp = {};
 
 const originAppName = {
-  "http://consumer.ankuranand.in:3020": "sso_consumer",
-  "http://consumertwo.ankuranand.in:3030": "simple_sso_consumer"
+  "http://local.photo-ac.com:3020": "photo_sso_consumer",
+  "http://local.illust-ac.com:3030": "illust_sso_consumer"
 };
 
 const userDB = {
-  "info@ankuranand.com": {
-    password: "test",
-    userId: encodedId(), // incase you dont want to share the user-email.
+  "admin@acworks.co.jp": {
+    password: "acworks123",
+    userId: 1, // incase you dont want to share the user-email.
     appPolicy: {
-      sso_consumer: { role: "admin", shareEmail: true },
-      simple_sso_consumer: { role: "user", shareEmail: false }
+      photo_sso_consumer: { site: "photo", premium: true },
+      illust_sso_consumer: { site: "illust", premium: false }
+    }
+  },
+  "pnbao@acworks.co.jp": {
+    password: "acworks123",
+    userId: 2, // incase you dont want to share the user-email.
+    appPolicy: {
+      photo_sso_consumer: { site: "photo", premium: false },
+      illust_sso_consumer: { site: "illust", premium: false }
     }
   }
 };
@@ -91,7 +98,14 @@ const storeApplicationInCache = (origin, id, intrmToken) => {
     sessionApp[id][originAppName[origin]] = true;
     fillIntrmTokenCache(origin, id, intrmToken);
   }
-  console.log({ ...sessionApp }, { ...sessionUser }, { intrmTokenCache });
+  console.log(
+    "session app:",
+    { ...sessionApp },
+    "session user:",
+    { ...sessionUser },
+    "intermediate token:",
+    { ...intrmTokenCache }
+  );
 };
 
 const generatePayload = ssoToken => {
@@ -100,12 +114,12 @@ const generatePayload = ssoToken => {
   const userEmail = sessionUser[globalSessionToken];
   const user = userDB[userEmail];
   const appPolicy = user.appPolicy[appName];
-  const email = appPolicy.shareEmail === true ? userEmail : undefined;
+  const premium = appPolicy.premium;
   const payload = {
     ...{ ...appPolicy },
     ...{
-      email,
-      shareEmail: undefined,
+      userEmail,
+      premium: premium,
       uid: user.userId,
       // global SessionID for the logout functionality.
       globalSessionID: globalSessionToken
@@ -146,6 +160,7 @@ const verifySsoToken = async (req, res, next) => {
   delete intrmTokenCache[ssoToken];
   return res.status(200).json({ token });
 };
+
 const doLogin = (req, res, next) => {
   // do the validation with email and password
   // but the goal is not to do the same in this right now,
@@ -184,6 +199,7 @@ const login = (req, res, next) => {
         .json({ message: "Your are not allowed to access the sso-server" });
     }
   }
+
   if (req.session.user != null && serviceURL == null) {
     return res.redirect("/");
   }
@@ -196,8 +212,43 @@ const login = (req, res, next) => {
   }
 
   return res.render("login", {
-    title: "SSO-Server | Login"
+    title: "ACworks Account | Login"
   });
 };
 
-module.exports = Object.assign({}, { doLogin, login, verifySsoToken });
+const isLoggedOut = (req, res, next) => {
+  const { serviceURL } = req.query;
+  // direct access will give the error inside new URL.
+  if (serviceURL != null) {
+    const url = new URL(serviceURL);
+    if (alloweOrigin[url.origin] !== true) {
+      return res
+        .status(400)
+        .json({ message: "Your are not allowed to access the sso-server" });
+    }
+  }
+  return res.json(req.session.user==null);
+};
+
+const logout = (req, res, next) => {
+  const { globalSessionToken, serviceURL } = req.query;
+  delete sessionApp[globalSessionToken];
+  delete sessionUser[globalSessionToken];
+
+  console.log(
+    "session app:",
+    { ...sessionApp },
+    "session user:",
+    { ...sessionUser },
+    "intermediate token:",
+    { ...intrmTokenCache }
+  );
+  res.clearCookie(globalSessionToken);
+  req.session.destroy();
+  return res.redirect(serviceURL);
+};
+
+module.exports = Object.assign(
+  {},
+  { doLogin, login, logout, isLoggedOut, verifySsoToken }
+);

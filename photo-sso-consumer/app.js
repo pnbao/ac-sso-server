@@ -3,7 +3,9 @@ const morgan = require("morgan");
 const app = express();
 const engine = require("ejs-mate");
 const session = require("express-session");
-const router = require("./router");
+
+const isAuthenticated = require("./isAuthenticated");
+const checkSSORedirect = require("./checkSSORedirect");
 
 app.use(
   session({
@@ -12,10 +14,7 @@ app.use(
     saveUninitialized: true
   })
 );
-app.use((req, res, next) => {
-  console.log(req.session);
-  next();
-});
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -23,13 +22,27 @@ app.use(morgan("dev"));
 app.engine("ejs", engine);
 app.set("views", __dirname + "/views");
 app.set("view engine", "ejs");
+app.use(checkSSORedirect());
 
-app.use("/acsso", router);
-app.get("/", (req, res, next) => {
+app.get("/", isAuthenticated, (req, res, next) => {
   res.render("index", {
-    what: `ACworks Account ${req.session.user}`,
-    title: "ACworks Account | Home"
+    what: `Photo SSO-Consumer ${JSON.stringify(req.session.user)}`,
+    title: "Photo SSO-Consumer | Photo Home"
   });
+});
+
+app.get("/logout", (req, res, next) => {
+  console.log("user", req.session.user);
+  const globalSessionToken = req.session.user.globalSessionID;
+  const redirectURL = `${req.protocol}://${req.headers.host}`;
+  res.clearCookie(globalSessionToken);
+  req.session.destroy();
+  res.redirect(
+    "http://account.acworks.co.jp:3010/acsso/logout?globalSessionToken=" +
+      globalSessionToken +
+      "&serviceURL=" +
+      redirectURL
+  );
 });
 
 app.use((req, res, next) => {

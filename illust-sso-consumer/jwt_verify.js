@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const { publicKey } = require("./config").keys;
 
-const ISSUER = "simple-sso";
+const ISSUER = "ac-sso";
 const verifyJwtToken = token =>
   new Promise((resolve, reject) => {
     jwt.verify(

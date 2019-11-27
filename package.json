@@ -1,0 +1,24 @@
+{
+  "name": "single-sign-on",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "concurrently \"cd sso-server && npm run start\" \"cd photo-sso-consumer && npm run start\" \"cd illust-sso-consumer && npm run start\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pnbao/simple-sso.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pnbao/simple-sso/issues"
+  },
+  "homepage": "https://github.com/pnbao/simple-sso#readme",
+  "dependencies": {
+    "concurrently": "^5.0.0"
+  }
+}
