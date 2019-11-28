@@ -11,11 +11,17 @@ const isAuthenticated = async (req, res, next) => {
     );
   }
   if (req.session.user != null) {
+    const globalSessionToken = req.session.user.globalSessionID;
     await fetch(
-      `http://account.acworks.co.jp:3010/acsso/isLoggedOut?serviceURL=${redirectURL}`
+      `http://account.acworks.co.jp:3010/acsso/isLoggedOut?globalSessionToken=${globalSessionToken}&serviceURL=${redirectURL}`
     )
       .then(res => res.json())
-      .then(json => console.log(json));
+      .then(isLoggedout => {
+        if (isLoggedout) {
+          req.session.destroy();
+          res.redirect("/");
+        }
+      });
   }
   next();
 };

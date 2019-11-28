@@ -11,6 +11,7 @@ router.get("/verifytoken", controller.verifySsoToken);
 
 //logout route
 router.get('/logout', controller.logout);
+router.get('/logoutAllSites', controller.logoutAllSites);
 router.get('/isLoggedOut', controller.isLoggedOut);
 
 module.exports = router;

@@ -26,7 +26,7 @@ app.use(checkSSORedirect());
 
 app.get("/", isAuthenticated, (req, res, next) => {
   res.render("index", {
-    what: `Photo SSO-Consumer ${JSON.stringify(req.session.user)}`,
+    what: `Photo SSO-Consumer ${JSON.stringify(req.session.user ? req.session.user : "Not Logged In")}`,
     title: "Photo SSO-Consumer | Photo Home"
   });
 });
@@ -39,6 +39,20 @@ app.get("/logout", (req, res, next) => {
   req.session.destroy();
   res.redirect(
     "http://account.acworks.co.jp:3010/acsso/logout?globalSessionToken=" +
+      globalSessionToken +
+      "&serviceURL=" +
+      redirectURL
+  );
+});
+
+app.get("/logoutAllSites", (req, res, next) => {
+  console.log("user", req.session.user);
+  const globalSessionToken = req.session.user.globalSessionID;
+  const redirectURL = `${req.protocol}://${req.headers.host}`;
+  res.clearCookie(globalSessionToken);
+  req.session.destroy();
+  res.redirect(
+    "http://account.acworks.co.jp:3010/acsso/logoutAllSites?globalSessionToken=" +
       globalSessionToken +
       "&serviceURL=" +
       redirectURL

@@ -3,6 +3,8 @@ const Hashids = require("hashids");
 const URL = require("url").URL;
 const hashids = new Hashids();
 const { genJwtToken } = require("./jwt_helper");
+const couchbase = require("couchbase");
+const path = require("path");
 
 const re = /(\S+)\s+(\S+)/;
 
@@ -10,6 +12,18 @@ const re = /(\S+)\s+(\S+)/;
 // to lower case.
 const AUTH_HEADER = "authorization";
 const BEARER_AUTH_SCHEME = "bearer";
+
+const cluster = new couchbase.Cluster();
+
+function getAppName(serviceURL) {
+  let params = path
+    .basename(serviceURL)
+    .split(".")
+    .join(":")
+    .split(":");
+  if (params.includes("photo-ac")) return "Photo AC";
+  else if (params.includes("illust-ac")) return "Illust AC";
+}
 
 function parseAuthHeader(hdrValue) {
   if (typeof hdrValue !== "string") {
@@ -63,25 +77,6 @@ const originAppName = {
   "http://local.illust-ac.com:3030": "illust_sso_consumer"
 };
 
-const userDB = {
-  "admin@acworks.co.jp": {
-    password: "acworks123",
-    userId: 1, // incase you dont want to share the user-email.
-    appPolicy: {
-      photo_sso_consumer: { site: "photo", premium: true },
-      illust_sso_consumer: { site: "illust", premium: false }
-    }
-  },
-  "pnbao@acworks.co.jp": {
-    password: "acworks123",
-    userId: 2, // incase you dont want to share the user-email.
-    appPolicy: {
-      photo_sso_consumer: { site: "photo", premium: false },
-      illust_sso_consumer: { site: "illust", premium: false }
-    }
-  }
-};
-
 // these token are for the validation purpose
 const intrmTokenCache = {};
 
@@ -111,16 +106,15 @@ const storeApplicationInCache = (origin, id, intrmToken) => {
 const generatePayload = ssoToken => {
   const globalSessionToken = intrmTokenCache[ssoToken][0];
   const appName = intrmTokenCache[ssoToken][1];
-  const userEmail = sessionUser[globalSessionToken];
-  const user = userDB[userEmail];
-  const appPolicy = user.appPolicy[appName];
+  const userEmail = sessionUser[globalSessionToken].email;
+  const appPolicy = sessionUser[globalSessionToken].appPolicy[appName];
   const premium = appPolicy.premium;
   const payload = {
     ...{ ...appPolicy },
     ...{
       userEmail,
       premium: premium,
-      uid: user.userId,
+      uid: sessionUser[globalSessionToken].userId,
       // global SessionID for the logout functionality.
       globalSessionID: globalSessionToken
     }
@@ -162,26 +156,43 @@ const verifySsoToken = async (req, res, next) => {
 };
 
 const doLogin = (req, res, next) => {
-  // do the validation with email and password
-  // but the goal is not to do the same in this right now,
-  // like checking with Datebase and all, we are skiping these section
   const { email, password } = req.body;
-  if (!(userDB[email] && password === userDB[email].password)) {
-    return res.status(404).json({ message: "Invalid email and password" });
-  }
+  const bucket = cluster.openBucket("users", function(err) {
+    if (err) {
+      res.status(503).json({ message: "Login Server Internal Error" });
+    }
 
-  // else redirect
-  const { serviceURL } = req.query;
-  const id = encodedId();
-  req.session.user = id;
-  sessionUser[id] = email;
-  if (serviceURL == null) {
-    return res.redirect("/");
-  }
-  const url = new URL(serviceURL);
-  const intrmid = encodedId();
-  storeApplicationInCache(url.origin, id, intrmid);
-  return res.redirect(`${serviceURL}?ssoToken=${intrmid}`);
+    bucket.get(email, function(err, result) {
+      if (err) {
+        return res.status(404).json({ message: "Error Invalid email" });
+      }
+      var doc = result.value;
+      if (doc === undefined) {
+        return res.status(404).json({ message: "Invalid email" });
+      } else {
+        if (!(password === doc.password)) {
+          return res
+            .status(404)
+            .json({ message: "Invalid email and password" });
+        }
+        const { serviceURL } = req.query;
+        const id = encodedId();
+        req.session.user = id;
+        sessionUser[id] = {
+          email: email,
+          appPolicy: doc.appPolicy,
+          userId: doc.userId
+        };
+        if (serviceURL == null) {
+          return res.redirect("/");
+        }
+        const url = new URL(serviceURL);
+        const intrmid = encodedId();
+        storeApplicationInCache(url.origin, id, intrmid);
+        return res.redirect(`${serviceURL}?ssoToken=${intrmid}`);
+      }
+    });
+  });
 };
 
 const login = (req, res, next) => {
@@ -212,12 +223,13 @@ const login = (req, res, next) => {
   }
 
   return res.render("login", {
-    title: "ACworks Account | Login"
+    title: "ACworks Account | Login",
+    origin: getAppName(serviceURL)
   });
 };
 
 const isLoggedOut = (req, res, next) => {
-  const { serviceURL } = req.query;
+  const { globalSessionToken, serviceURL } = req.query;
   // direct access will give the error inside new URL.
   if (serviceURL != null) {
     const url = new URL(serviceURL);
@@ -227,10 +239,17 @@ const isLoggedOut = (req, res, next) => {
         .json({ message: "Your are not allowed to access the sso-server" });
     }
   }
-  return res.json(req.session.user==null);
+  return res.json(sessionUser[globalSessionToken] == null);
 };
 
 const logout = (req, res, next) => {
+  const { globalSessionToken, serviceURL } = req.query;
+  res.clearCookie(globalSessionToken);
+  req.session.destroy();
+  return res.redirect(serviceURL);
+};
+
+const logoutAllSites = (req, res, next) => {
   const { globalSessionToken, serviceURL } = req.query;
   delete sessionApp[globalSessionToken];
   delete sessionUser[globalSessionToken];
@@ -250,5 +269,5 @@ const logout = (req, res, next) => {
 
 module.exports = Object.assign(
   {},
-  { doLogin, login, logout, isLoggedOut, verifySsoToken }
+  { doLogin, login, logout, logoutAllSites, isLoggedOut, verifySsoToken }
 );

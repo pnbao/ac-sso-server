@@ -1,3 +1,4 @@
+const fetch = require("node-fetch");
 const isAuthenticated = async (req, res, next) => {
   // simple check to see if the user is authenicated or not,
   // if not redirect the user to the SSO Server for Login
@@ -8,6 +9,19 @@ const isAuthenticated = async (req, res, next) => {
     return res.redirect(
       `http://account.acworks.co.jp:3010/acsso/login?serviceURL=${redirectURL}`
     );
+  }
+  if (req.session.user != null) {
+    const globalSessionToken = req.session.user.globalSessionID;
+    await fetch(
+      `http://account.acworks.co.jp:3010/acsso/isLoggedOut?globalSessionToken=${globalSessionToken}&serviceURL=${redirectURL}`
+    )
+      .then(res => res.json())
+      .then(isLoggedout => {
+        if (isLoggedout) {
+          req.session.destroy();
+          res.redirect("/");
+        }
+      });
   }
   next();
 };
