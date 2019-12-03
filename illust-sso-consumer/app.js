@@ -3,7 +3,7 @@ const morgan = require("morgan");
 const app = express();
 const engine = require("ejs-mate");
 const session = require("express-session");
-
+const cors = require("cors");
 const isAuthenticated = require("./isAuthenticated");
 const checkSSORedirect = require("./checkSSORedirect");
 
@@ -17,6 +17,9 @@ app.use(
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(
+  cors({ origin: "http://account.acworks.co.jp:3010", credentials: true })
+);
 
 app.use(morgan("dev"));
 app.engine("ejs", engine);

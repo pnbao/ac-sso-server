@@ -3,7 +3,7 @@ const morgan = require("morgan");
 const app = express();
 const engine = require("ejs-mate");
 const session = require("express-session");
-
+const cors = require("cors");
 const isAuthenticated = require("./isAuthenticated");
 const checkSSORedirect = require("./checkSSORedirect");
 
@@ -17,16 +17,20 @@ app.use(
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(
+  cors({ origin: "http://account.acworks.co.jp:3010", credentials: true })
+);
 
 app.use(morgan("dev"));
 app.engine("ejs", engine);
 app.set("views", __dirname + "/views");
 app.set("view engine", "ejs");
 app.use(checkSSORedirect());
-
 app.get("/", isAuthenticated, (req, res, next) => {
   res.render("index", {
-    what: `Photo SSO-Consumer ${JSON.stringify(req.session.user ? req.session.user : "Not Logged In")}`,
+    what: `Photo SSO-Consumer ${JSON.stringify(
+      req.session.user ? req.session.user : "Not Logged In"
+    )}`,
     title: "Photo SSO-Consumer | Photo Home"
   });
 });

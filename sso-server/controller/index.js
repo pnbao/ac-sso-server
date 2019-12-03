@@ -5,15 +5,22 @@ const hashids = new Hashids();
 const { genJwtToken } = require("./jwt_helper");
 const couchbase = require("couchbase");
 const path = require("path");
-
+require("dotenv").config();
 const re = /(\S+)\s+(\S+)/;
+const { OAuth2Client } = require("google-auth-library");
+const client = new OAuth2Client(process.env.AUTHENTICATION_GOOGLE_CLIENT);
 
 // Note: express http converts all headers
 // to lower case.
 const AUTH_HEADER = "authorization";
 const BEARER_AUTH_SCHEME = "bearer";
 
-const cluster = new couchbase.Cluster();
+const cluster = new couchbase.Cluster(process.env.COUCHBASE_CLUSTER);
+
+cluster.authenticate(
+  process.env.COUCHBASE_CLUSTER_USERNAME,
+  process.env.COUCHBASE_CLUSTER_PASSWORD
+);
 
 function getAppName(serviceURL) {
   let params = path
@@ -55,8 +62,8 @@ const appTokenFromRequest = fromAuthHeaderAsBearerToken();
 
 // app token to validate the request is coming from the authenticated server only.
 const appTokenDB = {
-  photo_sso_consumer: "l1Q7zkOL59cRqWBkQ12ZiGVW2DBL",
-  illust_sso_consumer: "1g0jJwGmRQhJwvwNOrY4i90kD0m"
+  photo_sso_consumer: process.env.PHOTO_AC_APP_TOKEN,
+  illust_sso_consumer: process.env.ILLUST_AC_APP_TOKEN
 };
 
 const alloweOrigin = {
@@ -189,10 +196,58 @@ const doLogin = (req, res, next) => {
         const url = new URL(serviceURL);
         const intrmid = encodedId();
         storeApplicationInCache(url.origin, id, intrmid);
+        console.log("inside doLogin, have user, have url");
+
         return res.redirect(`${serviceURL}?ssoToken=${intrmid}`);
       }
     });
   });
+};
+
+const googleSignIn = async (req, res, next) => {
+  const { email, token } = req.body;
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.AUTHENTICATION_GOOGLE_CLIENT
+    });
+    const payload = ticket.getPayload();
+    const bucket = cluster.openBucket("users", function(err) {
+      if (err) {
+        res.status(503).json({ message: "Login Server Internal Error" });
+      }
+
+      bucket.get(payload.email, function(err, result) {
+        if (err) {
+          return res.status(404).json({ message: "Error Invalid email" });
+        }
+        var doc = result.value;
+        if (doc === undefined) {
+          return res.status(404).json({ message: "Invalid email" });
+        } else {
+          const { serviceURL } = req.query;
+          const id = encodedId();
+          req.session.user = id;
+          sessionUser[id] = {
+            email: email,
+            appPolicy: doc.appPolicy,
+            userId: doc.userId,
+            origin: "google"
+          };
+          if (serviceURL == null) {
+            return res.redirect("/");
+          }
+          const url = new URL(serviceURL);
+          const intrmid = encodedId();
+          storeApplicationInCache(url.origin, id, intrmid);
+          console.log("inside google, have user, have url");
+          return res.redirect(`${serviceURL}?ssoToken=${intrmid}`);
+        }
+      });
+    });
+  } catch (error) {
+    return res.json({ message: error });
+  }
 };
 
 const login = (req, res, next) => {
@@ -219,12 +274,14 @@ const login = (req, res, next) => {
     const url = new URL(serviceURL);
     const intrmid = encodedId();
     storeApplicationInCache(url.origin, req.session.user, intrmid);
+    console.log("inside login, have user, have url");
     return res.redirect(`${serviceURL}?ssoToken=${intrmid}`);
   }
 
   return res.render("login", {
     title: "ACworks Account | Login",
-    origin: getAppName(serviceURL)
+    origin: getAppName(serviceURL),
+    YOUR_CLIENT_ID: process.env.AUTHENTICATION_GOOGLE_CLIENT
   });
 };
 
@@ -246,7 +303,7 @@ const logout = (req, res, next) => {
   const { globalSessionToken, serviceURL } = req.query;
   res.clearCookie(globalSessionToken);
   req.session.destroy();
-  return res.redirect(serviceURL);
+  return res.redirect(serviceURL + "#logout");
 };
 
 const logoutAllSites = (req, res, next) => {
@@ -264,10 +321,18 @@ const logoutAllSites = (req, res, next) => {
   );
   res.clearCookie(globalSessionToken);
   req.session.destroy();
-  return res.redirect(serviceURL);
+  return res.redirect(serviceURL + "#logout");
 };
 
 module.exports = Object.assign(
   {},
-  { doLogin, login, logout, logoutAllSites, isLoggedOut, verifySsoToken }
+  {
+    doLogin,
+    login,
+    googleSignIn,
+    logout,
+    logoutAllSites,
+    isLoggedOut,
+    verifySsoToken
+  }
 );

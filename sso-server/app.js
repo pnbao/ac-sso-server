@@ -1,6 +1,7 @@
 const express = require("express");
 const morgan = require("morgan");
 const app = express();
+const cors = require("cors");
 const engine = require("ejs-mate");
 const session = require("express-session");
 const router = require("./router");
@@ -15,6 +16,7 @@ app.use(
 
 app.use((req, res, next) => {
   console.log(req.session);
+  res.header("Access-Control-Allow-Origin", "*");
   next();
 });
 app.use(express.urlencoded({ extended: true }));
@@ -24,7 +26,7 @@ app.use(morgan("dev"));
 app.engine("ejs", engine);
 app.set("views", __dirname + "/views");
 app.set("view engine", "ejs");
-
+app.use(cors());
 app.use("/acsso", router);
 app.get("/", (req, res, next) => {
   res.render("index", {

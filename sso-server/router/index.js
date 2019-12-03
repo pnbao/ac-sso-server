@@ -6,12 +6,10 @@ router
   .route("/login")
   .get(controller.login)
   .post(controller.doLogin);
-
+router.post("/googlesignin", controller.googleSignIn);
 router.get("/verifytoken", controller.verifySsoToken);
-
-//logout route
-router.get('/logout', controller.logout);
-router.get('/logoutAllSites', controller.logoutAllSites);
-router.get('/isLoggedOut', controller.isLoggedOut);
+router.get("/logout", controller.logout);
+router.get("/logoutAllSites", controller.logoutAllSites);
+router.get("/isLoggedOut", controller.isLoggedOut);
 
 module.exports = router;

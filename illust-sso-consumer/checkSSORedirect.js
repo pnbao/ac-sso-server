@@ -24,6 +24,8 @@ const ssoRedirect = () => {
         );
         const { token } = response.data;
         const decoded = await verifyJwtToken(token);
+        console.log("inside illust ssoRedirect, have user, have url");
+
         // now that we have the decoded jwt, use the,
         // global-session-id as the session id so that
         // the logout can be implemented with the global session.

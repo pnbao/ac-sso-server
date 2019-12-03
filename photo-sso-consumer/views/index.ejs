@@ -1,4 +1,11 @@
 <% layout('boilerplate') -%>
 <h1>I am the <%= what %> </h1>
-<a href="/logout">Logout</a>
-<a href="/logoutAllSites">Logout All Sites</a>
+<a href="/logout" onclick="signOut()">Logout</a>
+<a href="/logoutAllSites" onclick="signOut()">Logout All Sites</a>
+<script>
+  function signOut() {
+    var auth2 = gapi.auth2.getAuthInstance();
+    auth2.signOut();
+    auth2.disconnect();
+  }
+</script>
