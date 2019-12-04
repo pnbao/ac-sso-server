@@ -57,6 +57,36 @@
     <meta name="google-signin-client_id" content="<%= YOUR_CLIENT_ID %>" />
   </head>
   <body class="text-center" onload="checkLogout()">
+    <script>
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId: "786671431836201",
+          cookie: true,
+          xfbml: true,
+          version: "v5.0"
+        });
+        FB.AppEvents.logPageView();
+      };
+
+      (function(d, s, id) {
+        var js,
+          fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) {
+          return;
+        }
+        js = d.createElement(s);
+        js.id = id;
+        js.src = "https://connect.facebook.net/en_US/sdk.js";
+        fjs.parentNode.insertBefore(js, fjs);
+      })(document, "script", "facebook-jssdk");
+    </script>
+    <div id="fb-root"></div>
+    <script
+      async
+      defer
+      crossorigin="anonymous"
+      src="https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v5.0&appId=786671431836201&autoLogAppEvents=1"
+    ></script>
     <form class="form-signin" method="post">
       <h1 class="h3 mb-3 font-weight-normal">ACworks Sign in</h1>
       <h4 class="font-weight-normal">to continue <%= origin %></h4>
@@ -84,11 +114,54 @@
         Sign in
       </button>
       <hr />
-      <div class="g-signin2" data-onsuccess="onSignIn"></div>
+      <div
+        class="g-signin2"
+        data-width="300"
+        data-height="40"
+        data-longtitle="true"
+        data-onsuccess="onSignIn"
+      ></div>
+      <p></p>
+      <div
+        class="fb-login-button"
+        data-width="300"
+        data-size="large"
+        data-button-type="login_with"
+        data-use-continue-as="true"
+        data-scope="email"
+        data-onlogin="checkLoginState()"
+      ></div>
     </form>
   </body>
   <script src="https://apis.google.com/js/platform.js" async defer></script>
   <script>
+    function checkLoginState() {
+      FB.getLoginStatus(function(response) {
+        statusChangeCallback(response);
+      });
+    }
+    function statusChangeCallback(response) {
+      if (response.status === "connected") {
+        FB.api("/me", { fields: "email" }, function(response) {
+          var xhr = new XMLHttpRequest();
+          xhr.onreadystatechange = function() {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+              window.location = getUrlParameter("serviceURL");
+            }
+          };
+          xhr.open(
+            "POST",
+            "/acsso/facebooksignin?serviceURL=" + getUrlParameter("serviceURL")
+          );
+          xhr.setRequestHeader(
+            "Content-Type",
+            "application/x-www-form-urlencoded"
+          );
+          xhr.withCredentials = true;
+          xhr.send("email=" + response.email);
+        });
+      }
+    }
     function onSignIn(googleUser) {
       var email = googleUser.getBasicProfile().getEmail();
       var token = googleUser.getAuthResponse().id_token;

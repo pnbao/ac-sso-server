@@ -6,6 +6,8 @@ const session = require("express-session");
 const cors = require("cors");
 const isAuthenticated = require("./isAuthenticated");
 const checkSSORedirect = require("./checkSSORedirect");
+// const origin = "http://account.acworks.co.jp:3010";
+const origin = "https://localhost:3010";
 
 app.use(
   session({
@@ -17,9 +19,7 @@ app.use(
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(
-  cors({ origin: "http://account.acworks.co.jp:3010", credentials: true })
-);
+app.use(cors({ origin: origin, credentials: true }));
 
 app.use(morgan("dev"));
 app.engine("ejs", engine);
@@ -42,7 +42,8 @@ app.get("/logout", (req, res, next) => {
   res.clearCookie(globalSessionToken);
   req.session.destroy();
   res.redirect(
-    "http://account.acworks.co.jp:3010/acsso/logout?globalSessionToken=" +
+    origin +
+      "/acsso/logout?globalSessionToken=" +
       globalSessionToken +
       "&serviceURL=" +
       redirectURL
@@ -56,7 +57,8 @@ app.get("/logoutAllSites", (req, res, next) => {
   res.clearCookie(globalSessionToken);
   req.session.destroy();
   res.redirect(
-    "http://account.acworks.co.jp:3010/acsso/logoutAllSites?globalSessionToken=" +
+    origin +
+      "/acsso/logoutAllSites?globalSessionToken=" +
       globalSessionToken +
       "&serviceURL=" +
       redirectURL

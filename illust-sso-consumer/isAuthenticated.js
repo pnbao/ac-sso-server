@@ -5,17 +5,17 @@ const isAuthenticated = async (req, res, next) => {
   // pass the redirect URL as current URL
   // serviceURL is where the sso should redirect in case of valid user
   const redirectURL = `${req.protocol}://${req.headers.host}${req.path}`;
+  // const origin = "http://account.acworks.co.jp:3010";
+  const origin = "https://localhost:3010";
   if (req.session.user == null) {
     console.log("inside illust auth, not user");
-    return res.redirect(
-      `http://account.acworks.co.jp:3010/acsso/login?serviceURL=${redirectURL}`
-    );
+    return res.redirect(`${origin}/acsso/login?serviceURL=${redirectURL}`);
   }
   if (req.session.user != null) {
     console.log("inside illust auth, have user");
     const globalSessionToken = req.session.user.globalSessionID;
     await fetch(
-      `http://account.acworks.co.jp:3010/acsso/isLoggedOut?globalSessionToken=${globalSessionToken}&serviceURL=${redirectURL}`
+      `${origin}/acsso/isLoggedOut?globalSessionToken=${globalSessionToken}&serviceURL=${redirectURL}`
     )
       .then(res => res.json())
       .then(isLoggedout => {

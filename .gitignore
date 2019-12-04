@@ -1,3 +1,12 @@
 node_modules
 node_modules
 sso-server/.env
+illust-sso-consumer/certificates/local.illust-ac.com-key.pem
+illust-sso-consumer/certificates/local.illust-ac.com.pem
+sso-server/certificates/localhost-key.pem
+sso-server/certificates/localhost.pem
+photo-sso-consumer/certificates/local.photo-ac.com-key.pem
+photo-sso-consumer/certificates/local.photo-ac.com.pem
+illust-sso-consumer/package-lock.json
+sso-server/package-lock.json
+photo-sso-consumer/package-lock.json

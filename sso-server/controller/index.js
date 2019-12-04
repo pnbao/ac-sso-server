@@ -67,8 +67,8 @@ const appTokenDB = {
 };
 
 const alloweOrigin = {
-  "http://local.photo-ac.com:3020": true,
-  "http://local.illust-ac.com:3030": true
+  "https://local.photo-ac.com:3020": true,
+  "https://local.illust-ac.com:3030": true
 };
 
 const deHyphenatedUUID = () => uuidv4().replace(/-/gi, "");
@@ -80,8 +80,8 @@ const sessionUser = {};
 const sessionApp = {};
 
 const originAppName = {
-  "http://local.photo-ac.com:3020": "photo_sso_consumer",
-  "http://local.illust-ac.com:3030": "illust_sso_consumer"
+  "https://local.photo-ac.com:3020": "photo_sso_consumer",
+  "https://local.illust-ac.com:3030": "illust_sso_consumer"
 };
 
 // these token are for the validation purpose
@@ -250,6 +250,47 @@ const googleSignIn = async (req, res, next) => {
   }
 };
 
+const facebookSignIn = async (req, res, next) => {
+  const { email } = req.body;
+  try {
+    const bucket = cluster.openBucket("users", function(err) {
+      if (err) {
+        res.status(503).json({ message: "Login Server Internal Error" });
+      }
+
+      bucket.get(email, function(err, result) {
+        if (err) {
+          return res.status(404).json({ message: "Error Invalid email" });
+        }
+        var doc = result.value;
+        if (doc === undefined) {
+          return res.status(404).json({ message: "Invalid email" });
+        } else {
+          const { serviceURL } = req.query;
+          const id = encodedId();
+          req.session.user = id;
+          sessionUser[id] = {
+            email: email,
+            appPolicy: doc.appPolicy,
+            userId: doc.userId,
+            origin: "facebook"
+          };
+          if (serviceURL == null) {
+            return res.redirect("/");
+          }
+          const url = new URL(serviceURL);
+          const intrmid = encodedId();
+          storeApplicationInCache(url.origin, id, intrmid);
+          console.log("inside facebook, have user, have url");
+          return res.redirect(`${serviceURL}?ssoToken=${intrmid}`);
+        }
+      });
+    });
+  } catch (error) {
+    return res.json({ message: error });
+  }
+};
+
 const login = (req, res, next) => {
   // The req.query will have the redirect url where we need to redirect after successful
   // login and with sso token.
@@ -330,6 +371,7 @@ module.exports = Object.assign(
     doLogin,
     login,
     googleSignIn,
+    facebookSignIn,
     logout,
     logoutAllSites,
     isLoggedOut,

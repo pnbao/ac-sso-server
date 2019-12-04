@@ -2,8 +2,8 @@ const url = require("url");
 const axios = require("axios");
 const { URL } = url;
 const { verifyJwtToken } = require("./jwt_verify");
-const validReferOrigin = "http://account.acworks.co.jp:3010";
-const ssoServerJWTURL = "http://account.acworks.co.jp:3010/acsso/verifytoken";
+// const ssoServerJWTURL = "http://account.acworks.co.jp:3010";
+const ssoServerJWTURL = "https://localhost:3010";
 
 const ssoRedirect = () => {
   return async function(req, res, next) {
@@ -15,7 +15,7 @@ const ssoRedirect = () => {
       const redirectURL = url.parse(req.url).pathname;
       try {
         const response = await axios.get(
-          `${ssoServerJWTURL}?ssoToken=${ssoToken}`,
+          `${ssoServerJWTURL}/acsso/verifytoken?ssoToken=${ssoToken}`,
           {
             headers: {
               Authorization: "Bearer l1Q7zkOL59cRqWBkQ12ZiGVW2DBL"

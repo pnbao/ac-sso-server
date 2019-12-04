@@ -7,6 +7,7 @@ router
   .get(controller.login)
   .post(controller.doLogin);
 router.post("/googlesignin", controller.googleSignIn);
+router.post("/facebooksignin", controller.facebookSignIn);
 router.get("/verifytoken", controller.verifySsoToken);
 router.get("/logout", controller.logout);
 router.get("/logoutAllSites", controller.logoutAllSites);
