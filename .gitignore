@@ -10,3 +10,5 @@ photo-sso-consumer/certificates/local.photo-ac.com.pem
 illust-sso-consumer/package-lock.json
 sso-server/package-lock.json
 photo-sso-consumer/package-lock.json
+sso-server/config/google_key.json
+sso-server/config/keys/jwtPrivate.key
