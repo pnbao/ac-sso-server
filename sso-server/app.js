@@ -5,7 +5,6 @@ const cors = require("cors");
 const engine = require("ejs-mate");
 const session = require("express-session");
 const router = require("./router");
-
 app.use(
   session({
     secret: "keyboard cat",
@@ -16,7 +15,8 @@ app.use(
 
 app.use((req, res, next) => {
   console.log(req.session);
-  res.header("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Origin", "https://localhost:3000");
+  res.setHeader("Access-Control-Allow-Credentials", true);
   next();
 });
 app.use(express.urlencoded({ extended: true }));
@@ -26,7 +26,10 @@ app.use(morgan("dev"));
 app.engine("ejs", engine);
 app.set("views", __dirname + "/views");
 app.set("view engine", "ejs");
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
+
+
+
 app.use("/acsso", router);
 app.get("/", (req, res, next) => {
   res.render("index", {

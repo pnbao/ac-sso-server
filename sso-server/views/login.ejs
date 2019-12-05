@@ -54,7 +54,16 @@
       integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
       crossorigin="anonymous"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-social/4.12.0/bootstrap-social.min.css"
+    />
+    <script
+      src="https://kit.fontawesome.com/2859ad07c2.js"
+      crossorigin="anonymous"
+    ></script>
     <meta name="google-signin-client_id" content="<%= YOUR_CLIENT_ID %>" />
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
   </head>
   <body class="text-center" onload="checkLogout()">
     <script>
@@ -122,6 +131,16 @@
         data-onsuccess="onSignIn"
       ></div>
       <p></p>
+      <a
+        id="twitter-button"
+        class="btn btn-block btn-social btn-twitter"
+        style="color:white"
+        onclick="twitterSignIn()"
+      >
+        <i class="fab fa-twitter" style="border-right:none"></i>
+        <center>Sign in with Twitter</center>
+      </a>
+      <p></p>
       <div
         class="fb-login-button"
         data-width="300"
@@ -135,6 +154,23 @@
   </body>
   <script src="https://apis.google.com/js/platform.js" async defer></script>
   <script>
+    function twitterSignIn() {
+      var xhr = new XMLHttpRequest();
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState == 4 && xhr.status == 200) {
+          window.location = xhr.response;
+        }
+      };
+      xhr.open(
+        "GET",
+        "/acsso/twitterSignIn?serviceURL=" + getUrlParameter("serviceURL"),
+        true
+      );
+      xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+      xhr.withCredentials = true;
+      xhr.send();
+    }
+
     function checkLoginState() {
       FB.getLoginStatus(function(response) {
         statusChangeCallback(response);

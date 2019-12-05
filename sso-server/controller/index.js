@@ -9,6 +9,21 @@ require("dotenv").config();
 const re = /(\S+)\s+(\S+)/;
 const { OAuth2Client } = require("google-auth-library");
 const client = new OAuth2Client(process.env.AUTHENTICATION_GOOGLE_CLIENT);
+const CryptoJS = require("crypto-js");
+const oauth = require("oauth");
+const _twitterConsumerKey = process.env.TWITTER_CONSUMER_KEY;
+const _twitterConsumerSecret = process.env.TWITTER_CONSUMER_SECRET;
+const twitterCallbackUrl = process.env.TWITTER_CALLBACK_URL;
+const inspect = require("util-inspect");
+const consumer = new oauth.OAuth(
+  "https://twitter.com/oauth/request_token",
+  "https://twitter.com/oauth/access_token",
+  _twitterConsumerKey,
+  _twitterConsumerSecret,
+  "1.0A",
+  twitterCallbackUrl,
+  "HMAC-SHA1"
+);
 
 // Note: express http converts all headers
 // to lower case.
@@ -203,6 +218,125 @@ const doLogin = (req, res, next) => {
     });
   });
 };
+const twitterConnect = async (req, res, next) => {
+  const { serviceURL } = req.query;
+  consumer.getOAuthRequestToken(function(
+    error,
+    oauthToken,
+    oauthTokenSecret,
+    results
+  ) {
+    if (error) {
+      console.log("error inside twitterConnect: " + JSON.stringify(error));
+      res
+        .status(500)
+        .send("Error getting OAuth request token : " + inspect(error));
+    } else {
+      req.session.oauthRequestToken = oauthToken;
+      req.session.oauthRequestTokenSecret = oauthTokenSecret;
+      req.session.serviceURL = serviceURL;
+      console.log("Double check on 2nd step");
+      console.log("------------------------");
+      console.log("<<" + req.session.oauthRequestToken);
+      console.log("<<" + req.session.oauthRequestTokenSecret);
+      console.log("<<" + req.session.serviceURL);
+      return res
+        .status(200)
+        .send(
+          "https://api.twitter.com/oauth/authenticate?oauth_token=" +
+            req.session.oauthRequestToken
+        );
+    }
+  });
+};
+const twitterSignIn = async (req, res, next) => {
+  const { serviceURL } = req.query;
+  consumer.get(
+    "https://api.twitter.com/1.1/account/verify_credentials.json?include_email=true",
+    req.session.oauthAccessToken,
+    req.session.oauthAccessTokenSecret,
+    function(error, data, response) {
+      if (error) {
+        console.log(error);
+        res.redirect("/acsso/twitterConnect?serviceURL=" + serviceURL);
+      } else {
+        const parsedData = JSON.parse(data);
+        const email = parsedData.email;
+        try {
+          const bucket = cluster.openBucket("users", function(err) {
+            if (err) {
+              res.status(503).json({ message: "Login Server Internal Error" });
+            }
+
+            bucket.get(email, function(err, result) {
+              if (err) {
+                return res.status(404).json({ message: "Error Invalid email" });
+              }
+              var doc = result.value;
+              if (doc === undefined) {
+                return res.status(404).json({ message: "Invalid email" });
+              } else {
+                const serviceURL = req.session.serviceURL;
+                const id = encodedId();
+                req.session.user = id;
+                sessionUser[id] = {
+                  email: email,
+                  appPolicy: doc.appPolicy,
+                  userId: doc.userId,
+                  origin: "twitter"
+                };
+                if (serviceURL == null) {
+                  return res.redirect("/");
+                }
+                const url = new URL(serviceURL);
+                const intrmid = encodedId();
+                storeApplicationInCache(url.origin, id, intrmid);
+                console.log("inside twitter, have user, have url");
+                return res.redirect(`${serviceURL}?ssoToken=${intrmid}`);
+              }
+            });
+          });
+        } catch (error) {
+          return res.json({ message: error });
+        }
+      }
+    }
+  );
+};
+const twitterCallback = async (req, res, next) => {
+  console.log("------------------------");
+  console.log(">>" + req.session.oauthRequestToken);
+  console.log(">>" + req.session.oauthRequestTokenSecret);
+  console.log(">>" + req.query.oauth_verifier);
+  consumer.getOAuthAccessToken(
+    req.session.oauthRequestToken,
+    req.session.oauthRequestTokenSecret,
+    req.query.oauth_verifier,
+    function(error, oauthAccessToken, oauthAccessTokenSecret, results) {
+      if (error) {
+        res
+          .status(500)
+          .send(
+            "Error getting OAuth access token : " +
+              inspect(error) +
+              "[" +
+              oauthAccessToken +
+              "]" +
+              "[" +
+              oauthAccessTokenSecret +
+              "]" +
+              "[" +
+              inspect(result) +
+              "]"
+          );
+      } else {
+        req.session.oauthAccessToken = oauthAccessToken;
+        req.session.oauthAccessTokenSecret = oauthAccessTokenSecret;
+        res.redirect("/acsso/twitterSignIn");
+      }
+    }
+  );
+};
 
 const googleSignIn = async (req, res, next) => {
   const { email, token } = req.body;
@@ -372,6 +506,9 @@ module.exports = Object.assign(
     login,
     googleSignIn,
     facebookSignIn,
+    twitterCallback,
+    twitterConnect,
+    twitterSignIn,
     logout,
     logoutAllSites,
     isLoggedOut,

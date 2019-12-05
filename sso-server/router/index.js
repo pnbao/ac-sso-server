@@ -8,6 +8,9 @@ router
   .post(controller.doLogin);
 router.post("/googlesignin", controller.googleSignIn);
 router.post("/facebooksignin", controller.facebookSignIn);
+router.get("/twitterConnect", controller.twitterConnect);
+router.get("/twitterSignIn", controller.twitterSignIn);
+router.get("/twitterCallback", controller.twitterCallback);
 router.get("/verifytoken", controller.verifySsoToken);
 router.get("/logout", controller.logout);
 router.get("/logoutAllSites", controller.logoutAllSites);
